@@ -1,0 +1,213 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package org.joytools.commons.concurrent;
+
+import io.vavr.collection.Seq;
+import io.vavr.collection.Vector;
+import java.time.Duration;
+import java.util.Objects;
+import java.util.concurrent.Callable;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import org.apache.commons.lang3.builder.Builder;
+import org.joytools.commons.lang.StringUtils;
+
+/**
+ *
+ * @author AndreaR
+ * @param <E>
+ */
+public class BasicComposedCallableBuilder<E> implements Builder<Callable<BasicComposedResult<E>>> {
+
+    protected BasicComposedCallableBuilder() {
+    }
+
+    public BasicComposedCallableBuilder<E> add(final Callable<? extends E> task) {
+        final Callable<E> narrowed = (Callable<E>)Objects.requireNonNull(task, "Task"); 
+        this.tasks = this.tasks.append(narrowed);
+        return this;
+    }
+
+    // public <C extends Callable<? extends E>> SeqCallableBuilder<E> addAll(final Iterable<? extends Callable<E>> tasks) {
+    public <C extends Callable<? extends E>> BasicComposedCallableBuilder<E> addAll(final Iterable<? extends Callable<E>> tasks) {
+        Objects.requireNonNull(tasks, "Tasks");
+        this.tasks = this.tasks.appendAll(tasks);
+        return this;
+    }
+
+    public <C extends Callable<? extends E>> BasicComposedCallableBuilder<E> addAll(final C... tasks) {
+        Objects.requireNonNull(tasks, "Tasks");
+        for (final C c : tasks) {
+            this.tasks = this.tasks.append((Callable<E>)c);
+        }
+        return this;
+    }
+
+    public BasicComposedCallableBuilder<E> throwPolicy(final Predicate<ComposedResult<Integer, E>> condition) {
+        this.throwPolicy = Objects.requireNonNull(condition, "Throw Policy Condition");
+        this.throwPolicyMapper = null;
+        return this;
+    }
+
+    public BasicComposedCallableBuilder<E> throwPolicy(final Predicate<ComposedResult<Integer, E>> condition,
+            final Function<ComposedResult<Integer, E>, Exception> mapper) {
+        throwPolicy(condition);
+        this.throwPolicyMapper = Objects.requireNonNull(mapper, "Throw Policy Mapper");
+        return this;
+    }
+
+    public BasicComposedCallableBuilder<E> throwNoException() {
+        return throwPolicy(ThrowPolicies.alwaysFalse());
+    }
+
+    public BasicComposedCallableBuilder<E> throwFirstException() {
+        return throwPolicy(ThrowPolicies.isAnyFailed(), ThrowPolicies.firstException());
+    }
+
+    public BasicComposedCallableBuilder<E> throwAllExceptions() {
+        return throwPolicy(ThrowPolicies.isAnyFailed(), ThrowPolicies.allExceptions());
+    }
+
+    public BasicComposedCallableBuilder<E> shutdownOnSuccess() {
+        return shutdownPolicy(ShutdownPolicies.onSuccess());
+    }
+
+    public BasicComposedCallableBuilder<E> shutdownOnSuccess(final int count) {
+        return shutdownPolicy(ShutdownPolicies.onSuccess(count));
+    }
+
+    public BasicComposedCallableBuilder<E> shutdownOnCompletion() {
+        return shutdownPolicy(ShutdownPolicies.onCompletion());
+    }
+
+    public BasicComposedCallableBuilder<E> shutdownOnCompletion(final int count) {
+        return shutdownPolicy(ShutdownPolicies.onCompletion(count));
+    }
+
+    public BasicComposedCallableBuilder<E> shutdownOnFailure() {
+        return shutdownPolicy(ShutdownPolicies.onFailure());
+    }
+
+    public BasicComposedCallableBuilder<E> shutdownOnFailure(final int count) {
+        return shutdownPolicy(ShutdownPolicies.onFailure(count));
+    }
+
+    public BasicComposedCallableBuilder<E> shutdownPolicy(final Predicate<ComposedResult<Integer, E>> shutdownPolicy) {
+        this.shutdownPolicy = Objects.requireNonNull(shutdownPolicy, "Shutdown Policy");
+        return this;
+    }
+
+    public BasicComposedCallableBuilder<E> maxThreads(final int maxThreads) {
+        this.maxThreads = maxThreads;
+        return this;
+    }
+
+    public BasicComposedCallableBuilder<E> sumbitOrder() {
+        return completionOrder(false);
+    }
+
+    public BasicComposedCallableBuilder<E> completionOrder() {
+        return completionOrder(true);
+    }
+
+    public BasicComposedCallableBuilder<E> completionOrder(final boolean completionOrder) {
+        this.completionOrder = completionOrder;
+        return this;
+    }
+
+    public BasicComposedCallableBuilder<E> timeout(final TimeValueUnit timeout) {
+        this.timeout = timeout;
+        return this;
+    }
+
+    public BasicComposedCallableBuilder<E> timeout(final Duration timeout) {
+        this.timeout = timeout == null ? null : TimeValueUnits.of(timeout);
+        return this;
+    }
+
+    public BasicComposedCallableBuilder<E> shutdownTimeout(final TimeValueUnit shutdownTimeout) {
+        this.shutdownTimeout = shutdownTimeout;
+        return this;
+    }
+
+    public BasicComposedCallableBuilder<E> shutdownTimeout(final Duration shutdownTimeout) {
+        this.shutdownTimeout = shutdownTimeout == null ? null : TimeValueUnits.of(shutdownTimeout);
+        return this;
+    }
+
+    protected String prefix() {
+        final String s = new java.sql.Timestamp(System.currentTimeMillis()).toString();
+        return StringUtils.rightPad(s, 23, "0") + " ";
+    }
+    
+    @Override
+    public Callable<BasicComposedResult<E>> build() {
+        final BasicComposedCallableSettings<E> settings = new BasicComposedCallableSettings<E>() {
+            @Override
+            public Seq<Callable<E>> tasks() {
+                return tasks;
+            }
+
+            @Override
+            public Integer maxThreads() {
+                return maxThreads;
+            }
+
+            @Override
+            public boolean completionOrder() {
+                return completionOrder;
+            }
+
+            @Override
+            public TimeValueUnit timeout() {
+                return timeout;
+            }
+
+            @Override
+            public Predicate<ComposedResult<Integer, E>> shutdownPolicy() {
+                return shutdownPolicy;
+            }
+
+            @Override
+            public Predicate<ComposedResult<Integer, E>> throwPolicy() {
+                return throwPolicy;
+            }
+
+            @Override
+            public Function<ComposedResult<Integer, E>, Exception> throwPolicyMapper() {
+                return throwPolicyMapper;
+            }
+
+            @Override
+            public TimeValueUnit shutdownTimeout() {
+                return shutdownTimeout;
+            }
+        };
+        // return Callables.forComposition(settings);
+        return new BasicComposedCallable<E>() {
+            @Override
+            protected BasicComposedCallableSettings<E> settings() {
+                return settings;
+            }
+        };
+    }
+
+    private Seq<Callable<E>> tasks = Vector.empty();
+
+    private int maxThreads = 0;
+    
+    private TimeValueUnit timeout;
+    
+    private TimeValueUnit shutdownTimeout;
+
+    private Predicate<ComposedResult<Integer, E>> shutdownPolicy = ShutdownPolicies.onCompletion();
+    
+    private Predicate<ComposedResult<Integer, E>> throwPolicy = ThrowPolicies.isAnyFailed();
+
+    private Function<ComposedResult<Integer, E>, Exception> throwPolicyMapper = null;
+
+    private boolean completionOrder = false;
+    
+}

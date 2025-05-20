@@ -1,0 +1,173 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package org.joytools.commons.logging;
+
+import org.apache.commons.lang3.StringUtils;
+
+public final class TreeLogNodeId {
+
+    /**
+     *
+     */
+    public TreeLogNodeId() {
+    }
+
+    /**
+     *
+     * @param parent TreeLogNodeID
+     * @param position
+     */
+    public TreeLogNodeId(final TreeLogNodeId parent,
+            final int position) {
+        m_parent = parent;
+        if (position < 0) {
+            throw new IllegalArgumentException("Invalid position: " + position);
+        }
+        m_position = position;
+        // fId = TreeLogNodeStringID.toNodeId(position);
+        m_id = "/node[" + (position + 1) + "]";
+        if (m_parent == null) {
+            m_xpath = m_id;
+        } else {
+            m_xpath = m_parent.getXPath() + m_id;
+        }
+    }
+
+    /**
+     *
+     * @return boolean
+     */
+    public boolean isChild() {
+        return !m_id.equals(m_xpath);
+    }
+
+    /**
+     *
+     * @return TreeLogNodeId
+     */
+    public TreeLogNodeId getParent() {
+        return m_parent;
+    }
+
+    /**
+     *
+     * @return int
+     */
+    @Override
+    public int hashCode() {
+        return m_xpath.hashCode();
+    }
+
+    /**
+     *
+     * @param o Object
+     * @return boolean
+     */
+    @Override
+    public boolean equals(final Object o) {
+        if (!(o instanceof TreeLogNodeId)) {
+            return false;
+        }
+        return m_xpath.equals(((TreeLogNodeId) o).m_xpath);
+    }
+
+    /**
+     *
+     * @return TreeLogNodeID
+     */
+    public synchronized TreeLogNodeId newChild() {
+        return new TreeLogNodeId(this, ++m_child);
+    }
+
+    /**
+     *
+     * @return TreeLogNodeId
+     */
+    public TreeLogNodeId newSibling() {
+        final TreeLogNodeId parent = getParent();
+        if (parent == null) {
+            throw new IllegalStateException(
+                    "Can't create a sibling node for a root node");
+        } else {
+            return parent.newChild();
+        }
+    }
+
+    /**
+     *
+     * @return String
+     */
+    public String getNodeId() {
+        return m_id;
+    }
+
+    /**
+     *
+     * @return String
+     */
+    public String getXPath() {
+        return m_xpath;
+    }
+
+    /**
+     *
+     * @return String
+     */
+    @Override
+    public String toString() {
+        return m_xpath;
+    }
+
+    /**
+     *
+     * @return int
+     */
+    public int getDepth() {
+        if (m_depth < 0) {
+            m_depth = StringUtils.split(getXPath(), '/').length - 2;
+        }
+        return m_depth;
+    }
+
+    /**
+     *
+     * @return int
+     */
+    public int getPosition() {
+        return m_position;
+    }
+
+    /**
+     *
+     */
+    private TreeLogNodeId m_parent;
+
+    /**
+     *
+     */
+    private int m_child = -1;
+
+    /**
+     *
+     */
+    private String m_id = StringUtils.EMPTY;
+
+    /**
+     *
+     */
+    private int m_position = -1;
+
+    /**
+     *
+     */
+    private String m_xpath = StringUtils.EMPTY;
+
+    /**
+     *
+     */
+    private int m_depth = -1;
+
+}
